@@ -32,7 +32,7 @@ RUN apt-get update && \
 # install Julia packages in /opt/julia instead of $HOME
 ENV JULIA_DEPOT_PATH=/opt/julia
 ENV JULIA_PKGDIR=/opt/julia
-ENV JULIA_VERSION=1.5
+ENV JULIA_VERSION=1.4.1
 
 WORKDIR /tmp
 
@@ -79,6 +79,10 @@ USER $NB_UID
 #     conda clean --all -f -y && \
 #     fix-permissions "${CONDA_DIR}" && \
 #     fix-permissions "/home/${NB_USER}"
+
+RUN conda clean --all -f -y && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
 
 # Add Julia packages. Only add HDF5 if this is not a test-only build since
 # it takes roughly half the entire build time of all of the images on Travis
