@@ -26,20 +26,26 @@ RUN apt-get update && \
     fonts-dejavu \
     gfortran \
     gcc && \
+    gdb && \
+    rr && \
     rm -rf /var/lib/apt/lists/*
 
 # Julia dependencies
 # install Julia packages in /opt/julia instead of $HOME
 ENV JULIA_DEPOT_PATH=/opt/julia
 ENV JULIA_PKGDIR=/opt/julia
-ENV JULIA_VERSION=1.4.1
+ENV JULIA_VERSION=1.5.0
+# For Julia 1.4.1
+#ARG JULIA_CHECKSUM = fd6d8cadaed678174c3caefb92207a3b0e8da9f926af6703fb4d1e4e4f50610a
+# For Julia 1.5.0
+ARG JULIA_CHECKSUM=be7af676f8474afce098861275d28a0eb8a4ece3f83a11027e3554dcdecddb91
 
 WORKDIR /tmp
 
 # hadolint ignore=SC2046
 RUN mkdir "/opt/julia-${JULIA_VERSION}" && \
     wget -q https://julialang-s3.julialang.org/bin/linux/x64/$(echo "${JULIA_VERSION}" | cut -d. -f 1,2)"/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" && \
-    echo "fd6d8cadaed678174c3caefb92207a3b0e8da9f926af6703fb4d1e4e4f50610a *julia-${JULIA_VERSION}-linux-x86_64.tar.gz" | sha256sum -c - && \
+    echo "${JULIA_CHECKSUM} *julia-${JULIA_VERSION}-linux-x86_64.tar.gz" | sha256sum -c - && \
     tar xzf "julia-${JULIA_VERSION}-linux-x86_64.tar.gz" -C "/opt/julia-${JULIA_VERSION}" --strip-components=1 && \
     rm "/tmp/julia-${JULIA_VERSION}-linux-x86_64.tar.gz"
 RUN ln -fs /opt/julia-*/bin/julia /usr/local/bin/julia
@@ -80,8 +86,10 @@ USER $NB_UID
 #     fix-permissions "${CONDA_DIR}" && \
 #     fix-permissions "/home/${NB_USER}"
 
-# Do not install the R stuff
-RUN conda clean --all -f -y && \
+# Do not install the R stuff, install diffeqpy
+RUN pip install --quiet --yes diffeqpy \
+    && \
+    conda clean --all -f -y && \
     fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
 
@@ -93,14 +101,21 @@ RUN conda clean --all -f -y && \
 # to the system share location. Avoids problems with runtime UID change not
 # taking effect properly on the .local folder in the jovyan home dir.
 
-# Packages added after HDF5 IterableTables
+# Julia Packages added here (except HDF5 and IJulia, already present)
 RUN julia -e 'import Pkg; Pkg.update()' && \
     (test $TEST_ONLY_BUILD || test ! $USE_CUDA ||  julia -e 'import Pkg; Pkg.add("CUDA")') && \
     (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("HDF5")') && \
     (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("JLD2")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("PyCall")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("CxxWrap")') && \
     (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("IterableTables")') && \
     (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("DifferentialEquations")') && \
     (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("Plots")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("StatProfilerHTML")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("Traceur")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("DynamicalSystems")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("Distributions")') && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("Flux")') && \
     julia -e "using Pkg; pkg\"add IJulia\"; pkg\"precompile\"" && \
     # move kernelspec out of home \
     mv "${HOME}/.local/share/jupyter/kernels/julia"* "${CONDA_DIR}/share/jupyter/kernels/" && \
