@@ -25,9 +25,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     fonts-dejavu \
     gfortran \
-    gcc && \
-    gdb && \
-    rr && \
+    gcc \
+    gdb \
+    rr \
+    && \
     rm -rf /var/lib/apt/lists/*
 
 # Julia dependencies
@@ -87,7 +88,7 @@ USER $NB_UID
 #     fix-permissions "/home/${NB_USER}"
 
 # Do not install the R stuff, install diffeqpy
-RUN pip install --quiet --yes diffeqpy \
+RUN pip --quiet --no-cache-dir install diffeqpy \
     && \
     conda clean --all -f -y && \
     fix-permissions "${CONDA_DIR}" && \
